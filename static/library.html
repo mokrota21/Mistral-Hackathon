@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AInki - Your Learning Library</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/library.css">
+</head>
+<body>
+    <header class="library-header">
+        <div class="logo">
+            <h1>AInki</h1>
+            <span class="tagline">Read. Retain. Remember.</span>
+        </div>
+    </header>
+
+    <main class="library-content">
+        <!-- Upload -->
+        <section class="upload-section">
+            <h2>Upload a textbook</h2>
+            <div class="upload-zone" id="upload-zone">
+                <span class="upload-zone-icon">+</span>
+                <div class="upload-zone-text">Drop a PDF here or click to browse</div>
+                <div class="upload-zone-hint">PDF files only</div>
+                <input type="file" id="file-input" accept=".pdf">
+            </div>
+            <div class="upload-progress" id="upload-progress">
+                <div class="spinner"></div>
+                <span class="upload-progress-text">Uploading...</span>
+            </div>
+        </section>
+
+        <!-- Books -->
+        <section class="books-section">
+            <h2>Your library</h2>
+            <div class="books-grid" id="books-grid">
+                <!-- Populated by JS -->
+            </div>
+        </section>
+    </main>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/js/library.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# Dependencies and local data (use volume at runtime)
+.venv
+data
+
+# Env and secrets (compose injects via env_file)
+.env
+.env.*
+
+# Git and IDE
+.git
+.cursor
+.vscode
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Misc
+wandb
+*.drawio

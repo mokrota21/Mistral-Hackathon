@@ -21,7 +21,7 @@ def encode_pdf(pdf_path):
 
 class OcrService:
     def __init__(self) -> None:
-        self.ocr_model = settings.ocr_client
+        self.ocr_model = settings.mistral_client
 
     def process(self, file_path: str, output_path: str) -> str:
         base64_pdf = encode_pdf(file_path)

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     # Internal parameters
     chunk_size: int | None = None
     stride: int | None = None
+    similarity_threshold: float = 0.99
 
     @cached_property
     def langfuse_handler(self) -> CallbackHandler:
@@ -55,7 +56,7 @@ class Settings(BaseSettings):
         )
 
     @property
-    def ocr_client(self):
+    def mistral_client(self):
         client = Mistral(api_key=self.mistral_api_key)
         return client
 

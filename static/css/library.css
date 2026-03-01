@@ -1,0 +1,198 @@
+/* ── Library Page ── */
+
+.library-header {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+.logo h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: -0.02em;
+}
+.logo .tagline {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.library-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 40px;
+}
+
+/* ── Upload zone ── */
+.upload-section {
+    margin-bottom: 40px;
+}
+.upload-section h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text);
+}
+
+.upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 48px;
+    text-align: center;
+    cursor: pointer;
+    transition: all var(--transition);
+    background: var(--bg-card);
+    position: relative;
+}
+.upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+.upload-zone.dragover {
+    transform: scale(1.01);
+}
+
+.upload-zone-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    display: block;
+}
+.upload-zone-text {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+.upload-zone-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.upload-zone input[type="file"] {
+    display: none;
+}
+
+.upload-progress {
+    margin-top: 16px;
+    display: none;
+}
+.upload-progress.active {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+}
+.upload-progress-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* ── Book grid ── */
+.books-section h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text);
+}
+
+.books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.book-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    transition: all var(--transition);
+    animation: fadeIn 0.4s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border: 1px solid var(--border);
+}
+.book-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.book-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.book-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.book-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.4;
+    word-break: break-word;
+    flex: 1;
+    /* truncate long names */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.book-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.book-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.book-status-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.book-status-line .spinner {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+}
+
+.book-actions {
+    margin-top: auto;
+}
+.book-actions .btn-primary {
+    width: 100%;
+    text-align: center;
+    display: inline-block;
+}
+
+/* ── Empty state ── */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+    display: block;
+}
+.empty-state-text {
+    font-size: 1rem;
+}

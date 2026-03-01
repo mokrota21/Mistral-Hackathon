@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AInki Reader</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/reader.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs" type="module"></script>
+</head>
+<body>
+    <div class="reader-layout">
+        <!-- Header -->
+        <header class="reader-header">
+            <div class="reader-header-left">
+                <button class="back-btn" onclick="window.location='/'">&#8592; Library</button>
+                <span class="reader-book-title" id="book-title">Loading...</span>
+            </div>
+            <div class="reader-header-right">
+                <div class="knowledge-mode-toggle" id="mode-toggle">
+                    <span class="mode-label">Q&A source:</span>
+                    <button class="mode-btn active" data-mode="grouped" id="mode-grouped">Grouped</button>
+                    <button class="mode-btn" data-mode="raw" id="mode-raw">Raw</button>
+                </div>
+                <span class="timer-display" id="session-timer">&#128337; 0:00</span>
+                <span class="next-question-badge" id="next-question-badge">Next Q in 3:00</span>
+            </div>
+        </header>
+
+        <!-- Body -->
+        <div class="reader-body">
+            <!-- Left: Mastery scrollbar -->
+            <aside class="mastery-sidebar">
+                <div class="mastery-label">Mastery</div>
+                <div class="mastery-bar-container" id="mastery-bar"></div>
+            </aside>
+
+            <!-- Center: PDF viewer -->
+            <section class="pdf-viewer-section">
+                <div class="pdf-canvas-container" id="canvas-container">
+                    <canvas id="pdf-canvas"></canvas>
+                </div>
+                <div class="pdf-controls">
+                    <button class="page-nav-btn" id="prev-btn" title="Previous page">&#8592;</button>
+                    <span class="page-info" id="page-info">-- / --</span>
+                    <button class="page-nav-btn" id="next-btn" title="Next page">&#8594;</button>
+                    <input type="range" class="page-slider" id="page-slider" min="1" max="1" value="1">
+                    <div class="zoom-controls">
+                        <button class="page-nav-btn" id="zoom-out-btn" title="Zoom out (Ctrl+-)">&#8722;</button>
+                        <span class="zoom-level" id="zoom-level">200%</span>
+                        <button class="page-nav-btn" id="zoom-in-btn" title="Zoom in (Ctrl++)">&#43;</button>
+                        <button class="zoom-fit-btn" id="zoom-fit-btn" title="Fit to page (Ctrl+0)">Fit</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right: Progress panel -->
+            <aside class="progress-sidebar">
+                <!-- Reading progress -->
+                <div class="progress-section">
+                    <div class="progress-section-title">Reading Progress</div>
+                    <div class="progress-circle-wrap">
+                        <div class="progress-circle">
+                            <svg viewBox="0 0 72 72" width="64" height="64">
+                                <circle class="progress-circle-bg" cx="36" cy="36" r="30"/>
+                                <circle class="progress-circle-fill" id="progress-ring" cx="36" cy="36" r="30"
+                                    stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+                            </svg>
+                            <span class="progress-circle-text" id="progress-pct">0%</span>
+                        </div>
+                        <div class="progress-detail" id="progress-detail">
+                            Page 1 of --
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="progress-section">
+                    <div class="progress-section-title">Session Stats</div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-time">0:00</div>
+                            <div class="stat-label">Time</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-pages">0</div>
+                            <div class="stat-label">Pages Read</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-concepts">--</div>
+                            <div class="stat-label">Concepts</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="stat-answered">0</div>
+                            <div class="stat-label">Answered</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Knowledge objects for this area -->
+                <div class="progress-section">
+                    <div class="progress-section-title">Concepts Near This Page</div>
+                    <button class="knowledge-list-toggle" id="knowledge-toggle">
+                        <span>View concepts</span>
+                        <span class="arrow">&#9660;</span>
+                    </button>
+                    <div class="knowledge-list" id="knowledge-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Q&A Popup -->
+    <div class="qa-overlay" id="qa-overlay">
+        <div class="qa-modal" id="qa-modal">
+            <div class="qa-modal-header">
+                <span class="qa-modal-icon">&#129504;</span>
+                <span class="qa-modal-badge" id="qa-topic">Topic</span>
+            </div>
+            <div class="qa-modal-title">Quick knowledge check</div>
+            <div class="qa-question" id="qa-question">Question text here...</div>
+            <textarea class="qa-answer-input" id="qa-answer" placeholder="Type your answer here..."></textarea>
+            <div class="qa-actions">
+                <button class="btn-secondary" id="qa-skip">Skip</button>
+                <button class="btn-primary" id="qa-submit">Submit Answer</button>
+            </div>
+            <div class="qa-feedback" id="qa-feedback" style="display:none"></div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script type="module" src="/static/js/reader.js"></script>
+</body>
+</html>
