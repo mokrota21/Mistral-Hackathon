@@ -20,4 +20,5 @@ dependencies = [
     "bitsandbytes>=0.44.0",
     "accelerate>=1.0.0",
     "kaggle>=2.0.0",
+    "sqlalchemy>=2.0.47",
 ]

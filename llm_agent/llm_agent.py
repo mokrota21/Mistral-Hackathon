@@ -25,7 +25,6 @@ async def analyze_chunk(chunk: str, chunk_reference: int = -1) -> ChunkKnowledge
         ChunkKnowledge object
     """
     try:
-        logger.info(f"TODO Remove this log later: api_key mistral = {settings.mistral_api_key}")
         model = settings.llm_client
         # Single root model is more reliable than List[KnowledgeObject] for structured output
         model_with_structure = model.with_structured_output(ChunkAnalysisResponse)
