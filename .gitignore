@@ -14,5 +14,19 @@ wheels/
 
 wandb
 
+# Large generated embedding cache (keep out of repo)
+**/all_embeddings.json
+
 data/*
 !data/.gitkeep
+
+# Keep only Intro to Probability book data (ignore all other data/)
+!data/knowledge_objects/
+!data/knowledge_objects/Introduction to Probability by Joseph K. Blitzstein, Jessica Hwang (z-lib.org) (1).pdf/
+!data/knowledge_objects/Introduction to Probability by Joseph K. Blitzstein, Jessica Hwang (z-lib.org) (1).pdf/**
+
+!data/pdfs/
+!data/pdfs/Introduction to Probability by Joseph K. Blitzstein, Jessica Hwang (z-lib.org) (1).pdf
+
+!data/chunks/
+!data/chunks/Introduction to Probability by Joseph K. Blitzstein, Jessica Hwang (z-lib.org) (1).pdf.json
