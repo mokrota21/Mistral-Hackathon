@@ -18,6 +18,14 @@ Research shows that we learn much better when we revisit material at spaced inte
 ![Mastery](misc/app-main.png)  
 ![Topics](misc/app-topic.png)
 
+## Demo
+
+**[Watch demo on YouTube](https://youtu.be/s4rAePgH5Jc)**
+
+Or play the local video:
+
+<video src="misc/AInki-mistral-hackathon.mp4" controls width="640"></video>
+
 ## Pipeline
 
 High-level flow:
