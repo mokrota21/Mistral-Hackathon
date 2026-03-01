@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from langfuse.langchain import CallbackHandler
 from langchain_mistralai.chat_models import ChatMistralAI
 from functools import cached_property
+from mistralai import Mistral
 
 _env_path = Path(__file__).resolve().parent / ".env"
 
@@ -52,5 +53,10 @@ class Settings(BaseSettings):
             model="mistral-large-latest",
             api_key=self.mistral_api_key,
         )
+
+    @property
+    def ocr_client(self):
+        client = Mistral(api_key=self.mistral_api_key)
+        return client
 
 settings = Settings()
