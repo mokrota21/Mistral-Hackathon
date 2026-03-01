@@ -23,11 +23,11 @@ def embed_text(texts: List[str]) -> Any:
     )
     return [d.embedding for d in response.data]
 
-def embed_textbook(textbook_name: str) -> None:
-    knowledge_objects_path = KNOWLEDGE_OBJECTS_PATH / textbook_name
+def embed_textbook(textbook_name: str, provider: str = "mistral") -> None:
+    knowledge_objects_path = KNOWLEDGE_OBJECTS_PATH / textbook_name / provider
     knowledge_files = [
         p for p in knowledge_objects_path.glob("*.json")
-        if p.name != "all_embeddings.json"
+        if p.name not in ("all_embeddings.json", "grouped.json")
     ]
     knowledge_objects = []
     for knowledge_file in knowledge_files:
@@ -44,13 +44,13 @@ def embed_textbook(textbook_name: str) -> None:
         for id, e in enumerate(embedding):
             k["knowledge_objects"][id]["embedding"] = e
     
-    save_path = knowledge_objects_path / f"all_embeddings.json"
-    logger.info(f"Saving embeddings of {textbook_name} to {save_path} ...")
+    save_path = knowledge_objects_path / "all_embeddings.json"
+    logger.info(f"Saving embeddings of {textbook_name} (provider={provider}) to {save_path} ...")
     with open(save_path, "w", encoding="utf-8") as f:
         json.dump(knowledge_objects, f, indent=4)
-    logger.info(f"Embeddings of {textbook_name} saved")
+    logger.info(f"Embeddings of {textbook_name} (provider={provider}) saved")
 
-def merge_knowledge(textbook_name: str) -> None:
+def merge_knowledge(textbook_name: str, provider: str = "mistral") -> None:
     """
     Cluster knowledge objects by cosine similarity of their question embeddings.
     Saves grouped.json: list of {cluster_name, questions}
@@ -59,7 +59,7 @@ def merge_knowledge(textbook_name: str) -> None:
 
     threshold = settings.similarity_threshold
 
-    all_embeddings_path = KNOWLEDGE_OBJECTS_PATH / textbook_name / "all_embeddings.json"
+    all_embeddings_path = KNOWLEDGE_OBJECTS_PATH / textbook_name / provider / "all_embeddings.json"
     assert all_embeddings_path.exists(), f"All embeddings path {all_embeddings_path} does not exist"
     with open(all_embeddings_path, "r", encoding="utf-8") as f:
         all_embeddings = json.load(f)
@@ -131,7 +131,7 @@ def merge_knowledge(textbook_name: str) -> None:
             "references": sorted(references),
         })
 
-    save_path = KNOWLEDGE_OBJECTS_PATH / textbook_name / "grouped.json"
+    save_path = KNOWLEDGE_OBJECTS_PATH / textbook_name / provider / "grouped.json"
     with open(save_path, "w", encoding="utf-8") as f:
         json.dump(grouped, f, indent=4, ensure_ascii=False)
     logger.info(f"Grouped knowledge saved to {save_path} ({len(grouped)} clusters)")

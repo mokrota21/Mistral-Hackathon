@@ -27,6 +27,7 @@ let sessionStartTime = Date.now();
 let masteryData = [];
 let currentQuestion = null;
 let knowledgeMode = 'grouped'; // 'grouped' or 'raw'
+let currentProvider = 'mistral'; // active LLM provider
 
 // Zoom state
 let userZoom = 2.0; // default 2x zoom
@@ -73,6 +74,8 @@ const zoomInBtn = document.getElementById('zoom-in-btn');
 const zoomOutBtn = document.getElementById('zoom-out-btn');
 const zoomFitBtn = document.getElementById('zoom-fit-btn');
 const zoomLevel = document.getElementById('zoom-level');
+const providerSelect = document.getElementById('provider-select');
+const rerunBtn = document.getElementById('rerun-btn');
 
 // ── Zoom controls ──
 function updateZoomDisplay() {
@@ -237,7 +240,7 @@ function renderMasteryBar() {
 async function loadNearbyKnowledge() {
     try {
         const res = await fetch(
-            `${API}/books/${encodeURIComponent(bookName)}/knowledge?page=${currentPage - 1}&limit=10&mode=${knowledgeMode}`
+            `${API}/books/${encodeURIComponent(bookName)}/knowledge?page=${currentPage - 1}&limit=10&mode=${knowledgeMode}&provider=${encodeURIComponent(currentProvider)}`
         );
         if (!res.ok) return;
         const data = await res.json();
@@ -271,7 +274,7 @@ async function loadNearbyKnowledge() {
 async function fetchQuestion() {
     try {
         const res = await fetch(
-            `${API}/books/${encodeURIComponent(bookName)}/knowledge?page=${currentPage - 1}&limit=1&mode=${knowledgeMode}`
+            `${API}/books/${encodeURIComponent(bookName)}/knowledge?page=${currentPage - 1}&limit=1&mode=${knowledgeMode}&provider=${encodeURIComponent(currentProvider)}`
         );
         if (!res.ok) return null;
         const data = await res.json();
@@ -387,6 +390,73 @@ knowledgeToggle.addEventListener('click', () => {
 });
 
 // ══════════════════════════════
+//  RERUN KNOWLEDGE EXTRACTION
+// ══════════════════════════════
+
+async function rerunKnowledge() {
+    const provider = providerSelect.value;
+    if (!confirm(`Rerun knowledge extraction using "${provider}" provider?\n\nThis will extract new Q&A pairs from the book using the selected LLM.`)) {
+        return;
+    }
+
+    rerunBtn.disabled = true;
+    rerunBtn.textContent = '⏳ Running...';
+
+    try {
+        const res = await fetch(`${API}/books/${encodeURIComponent(bookName)}/rerun`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider }),
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || 'Rerun failed', 'error');
+            rerunBtn.disabled = false;
+            rerunBtn.textContent = '↻ Rerun';
+            return;
+        }
+
+        showToast(`Knowledge extraction started (${provider})`, 'success');
+
+        // Poll for completion
+        pollRerunStatus();
+    } catch (e) {
+        showToast('Failed to start rerun', 'error');
+        rerunBtn.disabled = false;
+        rerunBtn.textContent = '↻ Rerun';
+    }
+}
+
+function pollRerunStatus() {
+    const interval = setInterval(async () => {
+        try {
+            const res = await fetch(`${API}/books/${encodeURIComponent(bookName)}/status`);
+            if (!res.ok) return;
+            const data = await res.json();
+
+            if (data.status === 'rerunning' || data.status === 'analyzing') {
+                rerunBtn.textContent = '⏳ Running...';
+            } else if (data.status === 'ready') {
+                clearInterval(interval);
+                rerunBtn.disabled = false;
+                rerunBtn.textContent = '↻ Rerun';
+                showToast('Knowledge extraction complete!', 'success');
+                // Reload knowledge with new provider data
+                loadNearbyKnowledge();
+            } else if (data.status === 'error') {
+                clearInterval(interval);
+                rerunBtn.disabled = false;
+                rerunBtn.textContent = '↻ Rerun';
+                showToast(`Rerun failed: ${data.error_message || 'Unknown error'}`, 'error');
+            }
+        } catch (e) {
+            // ignore polling errors
+        }
+    }, 3000);
+}
+
+// ══════════════════════════════
 //  INITIALIZATION
 // ══════════════════════════════
 
@@ -412,6 +482,51 @@ async function init() {
         showToast('Failed to load PDF', 'error');
         return;
     }
+
+    // Load book metadata and populate provider dropdown
+    try {
+        const pagesRes = await fetch(`${API}/books/${encodeURIComponent(bookName)}/pages`);
+        if (pagesRes.ok) {
+            const pagesData = await pagesRes.json();
+            const availableProviders = pagesData.available_providers || ['mistral'];
+            const providersWithData = pagesData.providers_with_data || [];
+            const defaultProvider = pagesData.default_provider || 'mistral';
+
+            // Populate dropdown
+            providerSelect.innerHTML = '';
+            availableProviders.forEach(prov => {
+                const opt = document.createElement('option');
+                opt.value = prov;
+                opt.textContent = prov;
+                // Mark providers that have data
+                if (!providersWithData.includes(prov)) {
+                    opt.textContent += ' (no data)';
+                }
+                providerSelect.appendChild(opt);
+            });
+
+            // Select first provider that has data, or the default
+            if (providersWithData.length > 0) {
+                currentProvider = providersWithData.includes(defaultProvider)
+                    ? defaultProvider
+                    : providersWithData[0];
+            } else {
+                currentProvider = defaultProvider;
+            }
+            providerSelect.value = currentProvider;
+        }
+    } catch (e) {
+        console.error('Pages metadata load error:', e);
+    }
+
+    // Provider change handler
+    providerSelect.addEventListener('change', () => {
+        currentProvider = providerSelect.value;
+        loadNearbyKnowledge();
+    });
+
+    // Rerun button
+    rerunBtn.addEventListener('click', rerunKnowledge);
 
     // Load mastery data
     loadMastery();

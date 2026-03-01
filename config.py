@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     # LLM
     llm_provider: str | None = None
+    finetune_service_url: str = "http://localhost:8001/v1"
 
     # Mistral AI
     mistral_api_key: str | None = None
@@ -41,12 +42,24 @@ class Settings(BaseSettings):
 
     @property
     def llm_client(self):
-        if self.llm_provider == "mistral":
+        return self.get_llm_client(self.llm_provider)
+
+    def get_llm_client(self, provider: str = None):
+        """Return LLM client for the given provider name."""
+        provider = provider or self.llm_provider
+        if provider == "mistral":
             return ChatMistralAI(
                 api_key=self.mistral_api_key,
             )
+        elif provider == "fine-tuned":
+            from langchain_openai import ChatOpenAI
+            return ChatOpenAI(
+                base_url=self.finetune_service_url,
+                api_key="dummy",
+                model="local",
+            )
         else:
-            raise ValueError(f"Unsupported LLM provider: {self.llm_provider}")
+            raise ValueError(f"Unsupported LLM provider: {provider}")
 
     @property
     def teacher_llm_client(self):

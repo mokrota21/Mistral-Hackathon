@@ -44,6 +44,52 @@ html, body { height: 100%; overflow: hidden; }
     overflow: hidden;
     text-overflow: ellipsis;
 }
+/* Provider controls */
+.provider-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg);
+    border-radius: var(--radius-xs);
+    padding: 3px 6px;
+}
+.provider-select {
+    padding: 4px 8px;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    min-width: 100px;
+}
+.provider-select:focus {
+    border-color: var(--primary);
+}
+.rerun-btn {
+    padding: 4px 10px;
+    border-radius: var(--radius-xs);
+    background: var(--primary);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+.rerun-btn:hover:not(:disabled) {
+    background: var(--primary-hover, #4338ca);
+    transform: translateY(-1px);
+}
+.rerun-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 /* Knowledge mode toggle */
 .knowledge-mode-toggle {
     display: flex;

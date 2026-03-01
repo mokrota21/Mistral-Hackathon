@@ -13,19 +13,20 @@ _prompt_path = _current_dir / "prompts" / "general-textbook.txt"
 with open(_prompt_path, encoding='utf-8') as f:
     PROMPT = f.read()
 
-async def analyze_chunk(chunk: str, chunk_reference: int = -1) -> ChunkKnowledge:
+async def analyze_chunk(chunk: str, chunk_reference: int = -1, provider: str = None) -> ChunkKnowledge:
     """
     Analyzes single chunk on presence of any review interesting information
-    
+
     Args:
         chunk: Text chunk to analyze
         chunk_reference: Reference identifier for the chunk (e.g., chunk index or page number)
-    
+        provider: LLM provider to use (e.g., "mistral", "fine-tuned"). Defaults to config setting.
+
     Returns:
         ChunkKnowledge object
     """
     try:
-        model = settings.llm_client
+        model = settings.get_llm_client(provider)
         # Single root model is more reliable than List[KnowledgeObject] for structured output
         model_with_structure = model.with_structured_output(ChunkAnalysisResponse)
 
@@ -54,45 +55,47 @@ async def analyze_chunk(chunk: str, chunk_reference: int = -1) -> ChunkKnowledge
 
 
 async def analyze_chunks_parallel(
-    chunks: List[str], 
+    chunks: List[str],
     chunk_references: List[int] = None,
     batch_size: int = 10,
-    max_concurrent: int = 5
+    max_concurrent: int = 5,
+    provider: str = None,
 ) -> List[ChunkKnowledge]:
     """
     Analyzes a list of chunks in parallel batches and returns aggregated results.
-    
+
     Args:
         chunks: List of text chunks to analyze
         chunk_references: Optional list of reference identifiers for each chunk
         batch_size: Number of chunks to process in each batch
         max_concurrent: Maximum number of concurrent requests per batch
-    
+        provider: LLM provider to use (e.g., "mistral", "fine-tuned")
+
     Returns:
         AgentResponse with aggregated knowledge_list and errors from all chunks
     """
     if chunk_references is None:
         chunk_references = [f"chunk_{i}" for i in range(len(chunks))]
-    
+
     if len(chunks) != len(chunk_references):
         raise ValueError("chunks and chunk_references must have the same length")
-    
+
     all_knowledge: List[ChunkKnowledge] = []
-    
+
     # Process chunks in batches
     for batch_start in range(0, len(chunks), batch_size):
         batch_end = min(batch_start + batch_size, len(chunks))
         batch_chunks = chunks[batch_start:batch_end]
         batch_references = chunk_references[batch_start:batch_end]
-        
+
         logger.info(f"Processing batch {batch_start // batch_size + 1}: chunks {batch_start} to {batch_end - 1}")
-        
+
         # Create semaphore to limit concurrent requests
         semaphore = asyncio.Semaphore(max_concurrent)
-        
+
         async def analyze_with_semaphore(chunk: str, ref: int):
             async with semaphore:
-                return await analyze_chunk(chunk, ref)
+                return await analyze_chunk(chunk, ref, provider=provider)
         
         # Process batch in parallel
         tasks = [

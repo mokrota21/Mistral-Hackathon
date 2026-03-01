@@ -17,6 +17,15 @@
                 <span class="reader-book-title" id="book-title">Loading...</span>
             </div>
             <div class="reader-header-right">
+                <div class="provider-controls">
+                    <span class="mode-label">LLM:</span>
+                    <select class="provider-select" id="provider-select">
+                        <!-- Populated by JS -->
+                    </select>
+                    <button class="rerun-btn" id="rerun-btn" title="Rerun knowledge extraction with selected provider">
+                        &#8635; Rerun
+                    </button>
+                </div>
                 <div class="knowledge-mode-toggle" id="mode-toggle">
                     <span class="mode-label">Q&A source:</span>
                     <button class="mode-btn active" data-mode="grouped" id="mode-grouped">Grouped</button>

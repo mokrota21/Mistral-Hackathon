@@ -109,6 +109,7 @@ Data in `./data` is kept when you stop or remove the container.
 | `chunks_service.py` | Text chunking |
 | `knowledge_service.py` | Knowledge extraction (Mistral) |
 | `embed_service.py` | Embeddings and grouping |
+| `finetune_service.py` | Local server for fine-tuned LoRA model (OpenAI-compatible API) |
 | `generate_data_service.py` | Build training data (golden outputs) and filter by relevance |
 | `fine-tuning/` | Fine-tune Mistral (HuggingFace or Mistral API) |
 | `data/` | **Persistent** — PDFs, OCR, chunks, knowledge objects, embeddings (mount in Docker) |
@@ -122,6 +123,23 @@ Data in `./data` is kept when you stop or remove the container.
 - **Fine-tune (Mistral API)**: `uv run fine-tuning/finetune_api.py`
 - **Fine-tune (HuggingFace/QLoRA)**: `uv run fine-tuning/finetune.py`
 
-## License
+### Using a local fine-tuned model (e.g. LoRA from Kaggle)
+
+The app can use a locally served fine-tuned model instead of Mistral API for knowledge extraction.
+
+1. **Install optional deps** (torch, transformers, peft, accelerate):
+   ```bash
+   uv sync --group finetune
+   ```
+2. **Start the model server** (loads adapter from `data/kaggle/finetuned_model` by default):
+   ```bash
+   uv run finetune_service.py
+   ```
+   Optional env: `FINETUNED_MODEL_PATH`, `FINETUNE_SERVICE_PORT` (default 8001).
+3. **Run the app** with the fine-tuned provider:
+   - In `.env`: `LLM_PROVIDER=fine-tuned` and `FINETUNE_SERVICE_URL=http://localhost:8001/v1`
+   - Start the app as usual: `uv run uvicorn app:app --host 0.0.0.0 --port 8000`
+
+The app’s `llm_client` (used in `llm_agent` for chunk analysis) will call your local server. No code changes needed beyond config.
 
 See repository license file.

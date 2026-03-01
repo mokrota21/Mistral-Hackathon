@@ -1,9 +1,10 @@
 """Reader endpoints: serve PDFs, knowledge Q&A, mastery data."""
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from paths import PDFS_PATH, OCR_PATH, KNOWLEDGE_OBJECTS_PATH
+from services.processing import AVAILABLE_PROVIDERS, _get_default_provider
 import json
 import random
 
@@ -31,9 +32,9 @@ class AnswerSubmission(BaseModel):
 
 # ── Knowledge helpers ──
 
-def _load_grouped_questions(book_name: str, page: int):
+def _load_grouped_questions(book_name: str, page: int, provider: str):
     """Load questions from grouped.json, filtered by page."""
-    grouped_path = KNOWLEDGE_OBJECTS_PATH / book_name / "grouped.json"
+    grouped_path = KNOWLEDGE_OBJECTS_PATH / book_name / provider / "grouped.json"
     if not grouped_path.exists():
         return None
 
@@ -54,9 +55,9 @@ def _load_grouped_questions(book_name: str, page: int):
     return all_questions
 
 
-def _load_raw_questions(book_name: str, page: int):
+def _load_raw_questions(book_name: str, page: int, provider: str):
     """Load questions from raw versioned knowledge JSONs."""
-    ko_path = _find_latest_ko(KNOWLEDGE_OBJECTS_PATH / book_name)
+    ko_path = _find_latest_ko(KNOWLEDGE_OBJECTS_PATH / book_name / provider)
     if ko_path is None:
         return None
 
@@ -73,6 +74,17 @@ def _load_raw_questions(book_name: str, page: int):
                     "reference": chunk_ko["reference"],
                 })
     return all_questions
+
+
+def _get_book_providers(book_name: str):
+    """Return list of providers that have knowledge data for this book."""
+    book_dir = KNOWLEDGE_OBJECTS_PATH / book_name
+    if not book_dir.exists():
+        return []
+    return [
+        d.name for d in book_dir.iterdir()
+        if d.is_dir() and _find_latest_ko(d) is not None
+    ]
 
 
 # ── Endpoints ──
@@ -93,13 +105,23 @@ async def book_pages(book_name: str):
     with open(ocr_path, encoding="utf-8") as f:
         data = json.load(f)
 
-    # Check if grouped.json exists
-    has_grouped = (KNOWLEDGE_OBJECTS_PATH / book_name / "grouped.json").exists()
+    # Gather provider info
+    providers_with_data = _get_book_providers(book_name)
+    default_provider = _get_default_provider()
+
+    # Build per-provider grouped status
+    provider_info = {}
+    for prov in providers_with_data:
+        has_grouped = (KNOWLEDGE_OBJECTS_PATH / book_name / prov / "grouped.json").exists()
+        provider_info[prov] = {"has_grouped": has_grouped}
 
     return {
         "name": book_name,
         "total_pages": len(data["pages"]),
-        "has_grouped": has_grouped,
+        "available_providers": AVAILABLE_PROVIDERS,
+        "providers_with_data": providers_with_data,
+        "provider_info": provider_info,
+        "default_provider": default_provider,
     }
 
 
@@ -109,20 +131,59 @@ async def get_knowledge(
     page: int = Query(0, ge=0),
     limit: int = Query(1, ge=1, le=20),
     mode: str = Query("grouped", regex="^(grouped|raw)$"),
+    provider: str = Query(None),
 ):
+    if provider is None:
+        provider = _get_default_provider()
+
     if mode == "grouped":
-        all_questions = _load_grouped_questions(book_name, page)
+        all_questions = _load_grouped_questions(book_name, page, provider)
         # Fallback to raw if grouped doesn't exist
         if all_questions is None:
-            all_questions = _load_raw_questions(book_name, page)
+            all_questions = _load_raw_questions(book_name, page, provider)
     else:
-        all_questions = _load_raw_questions(book_name, page)
+        all_questions = _load_raw_questions(book_name, page, provider)
 
     if not all_questions:
-        return {"questions": [], "mode": mode}
+        return {"questions": [], "mode": mode, "provider": provider}
 
     sampled = random.sample(all_questions, min(limit, len(all_questions)))
-    return {"questions": sampled, "mode": mode}
+    return {"questions": sampled, "mode": mode, "provider": provider}
+
+
+class RerunRequest(BaseModel):
+    provider: str = "mistral"
+
+
+@router.post("/books/{book_name:path}/rerun")
+async def rerun_knowledge(
+    book_name: str,
+    body: RerunRequest,
+    background_tasks: BackgroundTasks,
+):
+    """Rerun knowledge extraction + embedding + grouping for a specific provider."""
+    from services.processing import book_statuses, BookStatus, run_knowledge_pipeline
+    from paths import CHUNKS_PATH
+
+    if book_name not in book_statuses:
+        raise HTTPException(404, f"Book '{book_name}' not found")
+
+    current_status = book_statuses[book_name].status
+    if current_status in (BookStatus.OCR_PROCESSING, BookStatus.CHUNKING, BookStatus.ANALYZING, BookStatus.RERUNNING):
+        raise HTTPException(409, f"Book is currently being processed ({current_status.value})")
+
+    chunks_path = CHUNKS_PATH / f"{book_name}.json"
+    if not chunks_path.exists():
+        raise HTTPException(400, "Chunks not available — run full pipeline first")
+
+    background_tasks.add_task(run_knowledge_pipeline, book_name, body.provider)
+
+    return {
+        "name": book_name,
+        "provider": body.provider,
+        "status": "rerunning",
+        "message": f"Knowledge extraction rerun started with provider={body.provider}",
+    }
 
 
 @router.post("/books/{book_name:path}/answers")
