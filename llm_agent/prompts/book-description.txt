@@ -1,0 +1,22 @@
+Book: "Introduction to Probability" (Second Edition)
+Authors: Joseph K. Blitzstein, Jessica Hwang
+Series: Texts in Statistical Science, Chapman & Hall/CRC
+
+This textbook teaches probability theory at an undergraduate/introductory graduate level. The core topics it covers include:
+- Probability axioms, sample spaces, and events
+- Counting methods (combinatorics, permutations, combinations)
+- Conditional probability and Bayes' theorem
+- Random variables (discrete and continuous)
+- Probability distributions (Bernoulli, Binomial, Poisson, Geometric, Uniform, Normal, Exponential, Gamma, Beta, etc.)
+- Expectation, variance, and moments
+- Joint distributions and marginal distributions
+- Transformations of random variables
+- Law of Large Numbers and Central Limit Theorem
+- Markov chains
+- Moment generating functions
+- Conditional expectation
+- Inequalities (Markov, Chebyshev, Jensen)
+- Order statistics
+- Monte Carlo simulation and MCMC
+
+The book is known for its emphasis on intuition, problem-solving strategies, and real-world applications of probability.

@@ -1,15 +1,20 @@
-from pydantic_settings import BaseSettings
-from dotenv import load_dotenv
-import os
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from langfuse.langchain import CallbackHandler
 from langchain_mistralai.chat_models import ChatMistralAI
 from functools import cached_property
 
+_env_path = Path(__file__).resolve().parent / ".env"
 
-# Load .env from project root (new_backend/)
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=str(_env_path),
+        env_file_encoding="utf-8-sig",
+        extra="ignore",
+    )
+
     # Langfuse
     langfuse_public_key: str | None = None
     langfuse_secret_key: str | None = None
@@ -40,5 +45,12 @@ class Settings(BaseSettings):
             )
         else:
             raise ValueError(f"Unsupported LLM provider: {self.llm_provider}")
+
+    @property
+    def teacher_llm_client(self):
+        return ChatMistralAI(
+            model="mistral-large-latest",
+            api_key=self.mistral_api_key,
+        )
 
 settings = Settings()

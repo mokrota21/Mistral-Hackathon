@@ -1,0 +1,22 @@
+You are a strict quality-control reviewer for educational training data.
+
+Below is a description of the book the training data was generated from:
+
+{book_description}
+
+You will receive a list of knowledge objects (question + topic) that were extracted from the book. Your task is to grade EACH knowledge object as either "good" or "bad" based on whether it is **relevant to the actual subject matter the book teaches**.
+
+Grade as "good" ONLY if the question tests knowledge that a student would actually need to learn from this book — concepts, theorems, definitions, methods, formulas, proofs, examples, or applications covered in the book's core curriculum.
+
+Grade as "bad" if the question is about:
+- The book itself (publisher, series, edition, authors, editors, imprint)
+- Academic publishing processes (peer review, textbook development, editorial decisions)
+- The target audience or prerequisites of the book
+- Comparisons between book series or publishers
+- Curriculum design, pedagogy, or textbook adoption
+- Any other meta-information that is NOT part of the subject matter the book teaches
+
+Be strict: if a question does not test actual subject-matter knowledge that a student is expected to learn, grade it "bad".
+
+Knowledge objects to grade:
+{knowledge_objects}
