@@ -9,7 +9,7 @@ Run separately (requires torch, transformers, peft):
 
 Set in .env:
   LLM_PROVIDER=fine-tuned
-  FINETUNE_SERVICE_URL=http://localhost:8001
+  FINETUNE_SERVICE_URL=http://localhost:8001/v1
 """
 from __future__ import annotations
 
@@ -39,6 +39,14 @@ class ChatMessage(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
+    """OpenAI-compatible request body.
+
+    LangChain may send extra fields (tools, response_format, etc.)
+    that this local server doesn't support — we explicitly allow
+    and ignore them via model_config.
+    """
+    model_config = {"extra": "ignore"}
+
     model: str = "local"
     messages: list[ChatMessage]
     stream: bool = False
@@ -52,12 +60,12 @@ def _get_model_and_tokenizer():
         return _get_model_and_tokenizer._model, _get_model_and_tokenizer._tokenizer
     try:
         import torch
-        from transformers import AutoTokenizer
+        from transformers import AutoTokenizer, BitsAndBytesConfig
         from peft import AutoPeftModelForCausalLM
     except ImportError as e:
         raise RuntimeError(
-            "Fine-tune service requires torch, transformers, peft. "
-            "Install with: uv add torch transformers peft accelerate"
+            "Fine-tune service requires torch, transformers, peft, bitsandbytes. "
+            "Install with: uv add torch transformers peft accelerate bitsandbytes"
         ) from e
 
     adapter_path = os.environ.get(
@@ -70,12 +78,30 @@ def _get_model_and_tokenizer():
 
     logger.info("Loading tokenizer from %s", adapter_path)
     tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
+
+    # Mistral-7B bf16 needs ~14GB VRAM.  Use 4-bit quantization so it fits
+    # comfortably in 8GB cards (RTX 3060 Ti, etc.).
+    use_4bit = torch.cuda.is_available() and (
+        torch.cuda.get_device_properties(0).total_memory < 12 * 1024**3  # < 12 GB
+    )
+    quant_config = None
+    if use_4bit:
+        logger.info("GPU VRAM < 12 GB — loading model in 4-bit (NF4) quantization")
+        quant_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+
     logger.info("Loading base model + PEFT adapter...")
+    device_map = "auto" if use_4bit else ("cuda:0" if torch.cuda.is_available() else "cpu")
     model = AutoPeftModelForCausalLM.from_pretrained(
         adapter_path,
-        device_map="auto",
-        torch_dtype=torch.bfloat16,
+        device_map=device_map,
+        quantization_config=quant_config,
+        dtype=torch.bfloat16,
         trust_remote_code=True,
+        token=os.environ.get("HF_TOKEN"),
     )
     model.eval()
     _get_model_and_tokenizer._model = model

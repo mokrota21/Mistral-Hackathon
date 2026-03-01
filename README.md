@@ -6,6 +6,8 @@
 
 AInki is a web application that helps users absorb knowledge efficiently using a **spaced-repetition** approach inspired by [Anki](https://apps.ankiweb.net/). Upload a textbook PDF, and AInki turns it into study material with timed popups, mastery tracking, and a topic list.
 
+Research shows that we learn much better when we revisit material at spaced intervals instead of cramming once. The catch: most people never go back—they lack the habit or the will to schedule reviews themselves. AInki fixes that by **building repetition into the reading flow**: the app decides when to resurface past topics and prompts you with popups and questions at the right time. You learn better, faster, and more efficiently without having to remember to “go back and review”—the app does it for you.
+
 ## Features
 
 1. **Timed popups** — Check your understanding of past topics at intervals.
@@ -22,7 +24,7 @@ High-level flow:
 
 1. **Textbook (PDF)** → **Mistral OCR** → text + structure
 2. **Chunking** → split text into overlapping chunks
-3. **Study material extraction** → Mistral (optionally fine-tuned) extracts Q&A-style knowledge objects
+3. **Study material extraction** → Mistral extracts Q&A-style knowledge objects
 4. **Embedding** → Mistral Embed for semantic search
 5. **Grouping** → cluster similar knowledge for the UI
 6. **Web app** → library, reader, popups, mastery
@@ -50,7 +52,7 @@ uv sync
 Copy `.env.example` to `.env` and set at least:
 
 - `MISTRAL_API_KEY` — required for OCR, knowledge extraction, embeddings
-- `LLM_PROVIDER=mistral`
+- `LLM_PROVIDER=mistral` (only supported option)
 
 Optional: `LANGFUSE_*`, `WANDB_API_KEY`, `CHUNK_SIZE`, `STRIDE`, `SIMILARITY_THRESHOLD`.
 
@@ -109,9 +111,8 @@ Data in `./data` is kept when you stop or remove the container.
 | `chunks_service.py` | Text chunking |
 | `knowledge_service.py` | Knowledge extraction (Mistral) |
 | `embed_service.py` | Embeddings and grouping |
-| `finetune_service.py` | Local server for fine-tuned LoRA model (OpenAI-compatible API) |
 | `generate_data_service.py` | Build training data (golden outputs) and filter by relevance |
-| `fine-tuning/` | Fine-tune Mistral (HuggingFace or Mistral API) |
+| `fine-tuning/` | Fine-tune Mistral (HuggingFace or Mistral API); local fine-tuned inference was attempted but is disabled (too slow). |
 | `data/` | **Persistent** — PDFs, OCR, chunks, knowledge objects, embeddings (mount in Docker) |
 | `static/` | Frontend (library + reader HTML/JS/CSS) |
 | `misc/` | Screenshots, pipeline diagram |
@@ -123,23 +124,6 @@ Data in `./data` is kept when you stop or remove the container.
 - **Fine-tune (Mistral API)**: `uv run fine-tuning/finetune_api.py`
 - **Fine-tune (HuggingFace/QLoRA)**: `uv run fine-tuning/finetune.py`
 
-### Using a local fine-tuned model (e.g. LoRA from Kaggle)
-
-The app can use a locally served fine-tuned model instead of Mistral API for knowledge extraction.
-
-1. **Install optional deps** (torch, transformers, peft, accelerate):
-   ```bash
-   uv sync --group finetune
-   ```
-2. **Start the model server** (loads adapter from `data/kaggle/finetuned_model` by default):
-   ```bash
-   uv run finetune_service.py
-   ```
-   Optional env: `FINETUNED_MODEL_PATH`, `FINETUNE_SERVICE_PORT` (default 8001).
-3. **Run the app** with the fine-tuned provider:
-   - In `.env`: `LLM_PROVIDER=fine-tuned` and `FINETUNE_SERVICE_URL=http://localhost:8001/v1`
-   - Start the app as usual: `uv run uvicorn app:app --host 0.0.0.0 --port 8000`
-
-The app’s `llm_client` (used in `llm_agent` for chunk analysis) will call your local server. No code changes needed beyond config.
+We attempted using a locally served fine-tuned model (LoRA from Kaggle) for knowledge extraction, but it was too slow in practice, so that option is disabled. The app uses the Mistral API only. The `finetune_service.py` script and `fine-tuned` provider path remain in the codebase for reference.
 
 See repository license file.

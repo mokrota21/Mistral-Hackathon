@@ -32,8 +32,8 @@ class AnswerSubmission(BaseModel):
 
 # ── Knowledge helpers ──
 
-def _load_grouped_questions(book_name: str, page: int, provider: str):
-    """Load questions from grouped.json, filtered by page."""
+def _load_grouped_clusters(book_name: str, page: int, provider: str):
+    """Load clusters from grouped.json, filtered by page. Returns cluster-level data."""
     grouped_path = KNOWLEDGE_OBJECTS_PATH / book_name / provider / "grouped.json"
     if not grouped_path.exists():
         return None
@@ -41,18 +41,18 @@ def _load_grouped_questions(book_name: str, page: int, provider: str):
     with open(grouped_path, encoding="utf-8") as f:
         grouped = json.load(f)
 
-    all_questions = []
+    clusters = []
     for cluster in grouped:
         refs = cluster.get("references", [])
         # Include cluster if any of its references are <= current page
         if any(r <= page for r in refs):
-            for q in cluster["questions"]:
-                all_questions.append({
-                    "question": q,
-                    "knowledge_object": cluster["cluster_name"],
-                    "reference": min(refs),
-                })
-    return all_questions
+            clusters.append({
+                "cluster_name": cluster["cluster_name"],
+                "questions": cluster["questions"],
+                "question_count": len(cluster["questions"]),
+                "references": refs,
+            })
+    return clusters
 
 
 def _load_raw_questions(book_name: str, page: int, provider: str):
@@ -129,7 +129,7 @@ async def book_pages(book_name: str):
 async def get_knowledge(
     book_name: str,
     page: int = Query(0, ge=0),
-    limit: int = Query(1, ge=1, le=20),
+    limit: int = Query(1, ge=1, le=50),
     mode: str = Query("grouped", regex="^(grouped|raw)$"),
     provider: str = Query(None),
 ):
@@ -137,18 +137,21 @@ async def get_knowledge(
         provider = _get_default_provider()
 
     if mode == "grouped":
-        all_questions = _load_grouped_questions(book_name, page, provider)
+        clusters = _load_grouped_clusters(book_name, page, provider)
+        if clusters is not None:
+            sampled = random.sample(clusters, min(limit, len(clusters)))
+            return {"clusters": sampled, "questions": [], "mode": "grouped", "provider": provider}
         # Fallback to raw if grouped doesn't exist
-        if all_questions is None:
-            all_questions = _load_raw_questions(book_name, page, provider)
-    else:
-        all_questions = _load_raw_questions(book_name, page, provider)
+        mode = "raw"
+
+    # Raw mode: return individual questions
+    all_questions = _load_raw_questions(book_name, page, provider)
 
     if not all_questions:
-        return {"questions": [], "mode": mode, "provider": provider}
+        return {"clusters": [], "questions": [], "mode": mode, "provider": provider}
 
     sampled = random.sample(all_questions, min(limit, len(all_questions)))
-    return {"questions": sampled, "mode": mode, "provider": provider}
+    return {"clusters": [], "questions": sampled, "mode": mode, "provider": provider}
 
 
 class RerunRequest(BaseModel):

@@ -11,7 +11,7 @@ from paths import PDFS_PATH, OCR_PATH, CHUNKS_PATH, KNOWLEDGE_OBJECTS_PATH
 logger = logging.getLogger(__name__)
 
 
-AVAILABLE_PROVIDERS = ["mistral", "fine-tuned"]
+AVAILABLE_PROVIDERS = ["mistral"]
 
 
 def _get_default_provider() -> str:
@@ -226,3 +226,76 @@ def run_knowledge_pipeline(book_name: str, provider: str):
         logger.error(f"[{book_name}] Knowledge rerun error: {e}", exc_info=True)
         book_statuses[book_name].status = BookStatus.ERROR
         book_statuses[book_name].error_message = str(e)
+
+
+# ── Individual stage runners (for library rerun UI) ──
+
+STAGES = ["ocr", "chunking", "knowledge", "embedding", "grouping"]
+
+
+def run_single_stage(book_name: str, stage: str, provider: str = None):
+    """
+    Run a single pipeline stage for a book.
+    Called as a background task from the rerun-stage endpoint.
+    """
+    if provider is None:
+        provider = _get_default_provider()
+
+    try:
+        book_statuses[book_name].status = BookStatus.RERUNNING
+        book_statuses[book_name].error_message = None
+
+        if stage == "ocr":
+            logger.info(f"[{book_name}] Rerunning OCR...")
+            from ocr_service import process_textbook
+            pdf_path = PDFS_PATH / book_name
+            process_textbook(str(pdf_path))
+            # Update page count
+            ocr_path = OCR_PATH / f"{book_name}.json"
+            with open(ocr_path, encoding="utf-8") as f:
+                ocr_data = json.load(f)
+            book_statuses[book_name].total_pages = len(ocr_data["pages"])
+            logger.info(f"[{book_name}] OCR rerun complete: {book_statuses[book_name].total_pages} pages")
+
+        elif stage == "chunking":
+            logger.info(f"[{book_name}] Rerunning chunking...")
+            from chunks_service import chunk_textbook
+            chunk_textbook(book_name)
+            logger.info(f"[{book_name}] Chunking rerun complete")
+
+        elif stage == "knowledge":
+            logger.info(f"[{book_name}] Rerunning knowledge extraction (provider={provider})...")
+            from knowledge_service import analyze_textbook
+            analyze_textbook(book_name, limit=9999, provider=provider)
+            # Update knowledge count
+            ko_latest = _find_latest_ko(KNOWLEDGE_OBJECTS_PATH / book_name / provider)
+            if ko_latest:
+                with open(ko_latest, encoding="utf-8") as f:
+                    ko_data = json.load(f)
+                book_statuses[book_name].total_knowledge_objects = sum(
+                    len(e.get("knowledge_objects", [])) for e in ko_data
+                )
+            logger.info(f"[{book_name}] Knowledge extraction rerun complete (provider={provider})")
+
+        elif stage == "embedding":
+            logger.info(f"[{book_name}] Rerunning embedding (provider={provider})...")
+            from embed_service import embed_textbook
+            embed_textbook(book_name, provider=provider)
+            logger.info(f"[{book_name}] Embedding rerun complete (provider={provider})")
+
+        elif stage == "grouping":
+            logger.info(f"[{book_name}] Rerunning grouping (provider={provider})...")
+            from embed_service import merge_knowledge
+            merge_knowledge(book_name, provider=provider)
+            logger.info(f"[{book_name}] Grouping rerun complete (provider={provider})")
+
+        else:
+            raise ValueError(f"Unknown stage: {stage}")
+
+        book_statuses[book_name].status = BookStatus.READY
+        logger.info(f"[{book_name}] Stage '{stage}' rerun complete!")
+
+    except Exception as e:
+        logger.error(f"[{book_name}] Stage '{stage}' rerun error: {e}", exc_info=True)
+        book_statuses[book_name].status = BookStatus.ERROR
+        book_statuses[book_name].error_message = f"Stage '{stage}' failed: {e}"

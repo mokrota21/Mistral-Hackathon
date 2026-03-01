@@ -4,6 +4,11 @@ const API = '/api';
 const POLL_INTERVAL = 3000;
 let pollingTimers = {};
 
+// Pipeline stage metadata (fetched from API)
+let pipelineStages = [];
+let availableProviders = ['mistral'];
+let defaultProvider = 'mistral';
+
 // ── Toast notifications ──
 
 function showToast(message, type = 'info') {
@@ -26,8 +31,25 @@ const STATUS_LABELS = {
     ocr_processing: 'Running OCR...',
     chunking: 'Chunking text...',
     analyzing: 'Extracting knowledge...',
+    rerunning: 'Rerunning...',
     ready: 'Ready',
     error: 'Error',
+};
+
+const STAGE_LABELS = {
+    ocr: 'OCR',
+    chunking: 'Chunking',
+    knowledge: 'Knowledge extraction',
+    embedding: 'Embedding',
+    grouping: 'Grouping',
+};
+
+const STAGE_ICONS = {
+    ocr: '📄',
+    chunking: '✂️',
+    knowledge: '🧠',
+    embedding: '🔢',
+    grouping: '🔗',
 };
 
 function statusBadgeClass(status) {
@@ -37,7 +59,46 @@ function statusBadgeClass(status) {
 }
 
 function isProcessing(status) {
-    return ['uploading', 'ocr_processing', 'chunking', 'analyzing'].includes(status);
+    return ['uploading', 'ocr_processing', 'chunking', 'analyzing', 'rerunning'].includes(status);
+}
+
+// ── Rerun a single stage ──
+
+async function rerunStage(bookName, stage, btnEl) {
+    // Get the provider from the book card's dropdown
+    const card = btnEl.closest('.book-card');
+    const select = card.querySelector('.rerun-provider-select');
+    const provider = select ? select.value : defaultProvider;
+
+    // Disable all stage buttons on this card
+    const allBtns = card.querySelectorAll('.stage-btn');
+    allBtns.forEach(b => { b.disabled = true; });
+    btnEl.textContent = '⏳';
+
+    try {
+        const res = await fetch(`${API}/books/${encodeURIComponent(bookName)}/rerun-stage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stage, provider }),
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || `Failed to rerun ${stage}`, 'error');
+            allBtns.forEach(b => { b.disabled = false; });
+            btnEl.textContent = STAGE_LABELS[stage] || stage;
+            return;
+        }
+
+        showToast(`Stage "${STAGE_LABELS[stage] || stage}" started (${provider})`, 'success');
+        // Start polling to update the card when done
+        startPolling(bookName);
+
+    } catch (e) {
+        showToast(`Failed to rerun ${stage}`, 'error');
+        allBtns.forEach(b => { b.disabled = false; });
+        btnEl.textContent = STAGE_LABELS[stage] || stage;
+    }
 }
 
 // ── Render book card ──
@@ -48,6 +109,27 @@ function renderBookCard(book) {
     card.id = `book-${CSS.escape(book.name)}`;
 
     const processing = isProcessing(book.status);
+
+    // Build provider options HTML
+    let providerOptions = '';
+    availableProviders.forEach(prov => {
+        const selected = prov === defaultProvider ? ' selected' : '';
+        providerOptions += `<option value="${prov}"${selected}>${prov}</option>`;
+    });
+
+    // Build stage buttons HTML
+    let stageButtons = '';
+    pipelineStages.forEach(stage => {
+        const icon = STAGE_ICONS[stage] || '▶';
+        const label = STAGE_LABELS[stage] || stage;
+        stageButtons += `
+            <button class="stage-btn" data-stage="${stage}" data-book="${book.name}"
+                    title="Rerun: ${label}" ${processing ? 'disabled' : ''}>
+                <span class="stage-btn-icon">${icon}</span>
+                <span class="stage-btn-label">${label}</span>
+            </button>
+        `;
+    });
 
     card.innerHTML = `
         <div class="book-card-header">
@@ -63,8 +145,26 @@ function renderBookCard(book) {
                 ${processing ? '<span class="spinner"></span>' : ''}
                 ${STATUS_LABELS[book.status] || book.status}
             </span>
-            ${book.error_message ? `<span style="font-size:0.78rem;color:var(--error)">${book.error_message}</span>` : ''}
+            ${book.error_message ? `<span class="book-error-msg">${book.error_message}</span>` : ''}
         </div>
+
+        <!-- Rerun stages panel -->
+        <div class="rerun-panel">
+            <button class="rerun-toggle" onclick="this.closest('.rerun-panel').classList.toggle('expanded')">
+                <span>⚙ Rerun stages</span>
+                <span class="rerun-toggle-arrow">▼</span>
+            </button>
+            <div class="rerun-panel-body">
+                <div class="rerun-provider-row">
+                    <label class="rerun-provider-label">Provider:</label>
+                    <select class="rerun-provider-select">${providerOptions}</select>
+                </div>
+                <div class="stage-buttons">
+                    ${stageButtons}
+                </div>
+            </div>
+        </div>
+
         <div class="book-actions">
             ${book.status === 'ready'
                 ? `<a class="btn-primary" href="/reader/${encodeURIComponent(book.name)}">Open reader</a>`
@@ -72,6 +172,15 @@ function renderBookCard(book) {
             }
         </div>
     `;
+
+    // Attach click handlers to stage buttons
+    card.querySelectorAll('.stage-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const stage = btn.dataset.stage;
+            const bName = btn.dataset.book;
+            rerunStage(bName, stage, btn);
+        });
+    });
 
     return card;
 }
@@ -90,8 +199,13 @@ function startPolling(bookName) {
             // Update card
             const grid = document.getElementById('books-grid');
             const oldCard = document.getElementById(`book-${CSS.escape(book.name)}`);
-            const newCard = renderBookCard(book);
             if (oldCard) {
+                // Preserve expanded state of rerun panel
+                const wasExpanded = oldCard.querySelector('.rerun-panel.expanded') !== null;
+                const newCard = renderBookCard(book);
+                if (wasExpanded) {
+                    newCard.querySelector('.rerun-panel').classList.add('expanded');
+                }
                 grid.replaceChild(newCard, oldCard);
             }
 
@@ -109,6 +223,24 @@ function startPolling(bookName) {
             console.error('Polling error:', e);
         }
     }, POLL_INTERVAL);
+}
+
+// ── Load stages metadata ──
+
+async function loadStages() {
+    try {
+        const res = await fetch(`${API}/books/stages`);
+        if (res.ok) {
+            const data = await res.json();
+            pipelineStages = data.stages || [];
+            availableProviders = data.providers || ['mistral'];
+            defaultProvider = data.default_provider || 'mistral';
+        }
+    } catch (e) {
+        console.error('Failed to load stages:', e);
+        // Fallback
+        pipelineStages = ['ocr', 'chunking', 'knowledge', 'embedding', 'grouping'];
+    }
 }
 
 // ── Load books ──
@@ -197,7 +329,9 @@ async function uploadFile(file) {
 
 // ── Event listeners ──
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Load stage metadata first, then books (so cards render with stage buttons)
+    await loadStages();
     loadBooks();
 
     const zone = document.getElementById('upload-zone');

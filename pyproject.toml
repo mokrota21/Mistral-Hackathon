@@ -25,6 +25,7 @@ finetune = [
     "transformers>=4.46.0",
     "peft>=0.13.0",
     "accelerate>=1.0.0",
+    "bitsandbytes>=0.44.0",
 ]
 
 [dependency-groups]
@@ -33,6 +34,7 @@ finetune = [
     "transformers>=4.46.0",
     "peft>=0.13.0",
     "accelerate>=1.0.0",
+    "bitsandbytes>=0.44.0",
 ]
 
 # PyTorch CUDA: finetune group uses this index so torch installs with GPU support.

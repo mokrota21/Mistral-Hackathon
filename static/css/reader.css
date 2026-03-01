@@ -446,6 +446,44 @@ html, body { height: 100%; overflow: hidden; }
     font-size: 0.78rem;
 }
 
+/* Grouped cluster items */
+.knowledge-cluster {
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.knowledge-cluster:hover {
+    background: var(--border);
+}
+.knowledge-item-count {
+    font-size: 0.68rem;
+    font-weight: 600;
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.knowledge-cluster-questions {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.knowledge-cluster-q {
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+    line-height: 1.35;
+    padding: 3px 0;
+    padding-left: 8px;
+    border-left: 2px solid var(--border);
+}
+.knowledge-cluster.expanded {
+    border-left-color: var(--primary);
+}
+
 /* ── Q&A Popup Modal ── */
 .qa-overlay {
     position: fixed;

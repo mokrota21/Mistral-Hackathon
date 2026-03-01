@@ -182,6 +182,115 @@
     display: inline-block;
 }
 
+/* ── Rerun stages panel ── */
+.rerun-panel {
+    border-top: 1px solid var(--border);
+    margin: 0 -24px;
+    padding: 0 24px;
+}
+.rerun-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 0;
+    background: transparent;
+    border: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+.rerun-toggle:hover {
+    color: var(--text);
+}
+.rerun-toggle-arrow {
+    font-size: 0.65rem;
+    transition: transform 0.2s ease;
+}
+.rerun-panel.expanded .rerun-toggle-arrow {
+    transform: rotate(180deg);
+}
+.rerun-panel-body {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 12px;
+}
+.rerun-panel.expanded .rerun-panel-body {
+    display: flex;
+}
+
+.rerun-provider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.rerun-provider-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.rerun-provider-select {
+    flex: 1;
+    padding: 4px 8px;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+}
+.rerun-provider-select:focus {
+    border-color: var(--primary);
+}
+
+.stage-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.stage-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: var(--radius-xs);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+.stage-btn:hover:not(:disabled) {
+    background: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+.stage-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.stage-btn-icon {
+    font-size: 0.85rem;
+}
+.stage-btn-label {
+    font-size: 0.72rem;
+}
+
+.book-error-msg {
+    font-size: 0.78rem;
+    color: var(--error);
+}
+
 /* ── Empty state ── */
 .empty-state {
     text-align: center;

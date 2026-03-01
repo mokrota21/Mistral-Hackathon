@@ -240,28 +240,61 @@ function renderMasteryBar() {
 async function loadNearbyKnowledge() {
     try {
         const res = await fetch(
-            `${API}/books/${encodeURIComponent(bookName)}/knowledge?page=${currentPage - 1}&limit=10&mode=${knowledgeMode}&provider=${encodeURIComponent(currentProvider)}`
+            `${API}/books/${encodeURIComponent(bookName)}/knowledge?page=${currentPage - 1}&limit=20&mode=${knowledgeMode}&provider=${encodeURIComponent(currentProvider)}`
         );
         if (!res.ok) return;
         const data = await res.json();
 
-        statConcepts.textContent = data.questions.length;
-
         knowledgeList.innerHTML = '';
-        if (data.questions.length === 0) {
-            knowledgeList.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);padding:8px">No concepts extracted for this area yet.</div>';
+
+        // Grouped mode: render clusters
+        if (data.mode === 'grouped' && data.clusters && data.clusters.length > 0) {
+            statConcepts.textContent = data.clusters.length;
+
+            data.clusters.forEach(cluster => {
+                const item = document.createElement('div');
+                item.className = 'knowledge-item knowledge-cluster';
+                const qCount = cluster.question_count || cluster.questions.length;
+                item.innerHTML = `
+                    <div class="knowledge-item-topic">
+                        ${cluster.cluster_name}
+                        <span class="knowledge-item-count">${qCount} Q</span>
+                    </div>
+                    <div class="knowledge-cluster-questions" style="display:none">
+                        ${cluster.questions.map(q => `<div class="knowledge-cluster-q">${q}</div>`).join('')}
+                    </div>
+                `;
+                // Click to expand/collapse questions
+                item.addEventListener('click', () => {
+                    const qList = item.querySelector('.knowledge-cluster-questions');
+                    const isOpen = qList.style.display !== 'none';
+                    qList.style.display = isOpen ? 'none' : 'block';
+                    item.classList.toggle('expanded', !isOpen);
+                });
+                knowledgeList.appendChild(item);
+            });
             return;
         }
 
-        data.questions.forEach(q => {
-            const item = document.createElement('div');
-            item.className = 'knowledge-item';
-            item.innerHTML = `
-                <div class="knowledge-item-topic">${q.knowledge_object}</div>
-                <div class="knowledge-item-question">${q.question}</div>
-            `;
-            knowledgeList.appendChild(item);
-        });
+        // Raw mode: render individual questions
+        if (data.questions && data.questions.length > 0) {
+            statConcepts.textContent = data.questions.length;
+
+            data.questions.forEach(q => {
+                const item = document.createElement('div');
+                item.className = 'knowledge-item';
+                item.innerHTML = `
+                    <div class="knowledge-item-topic">${q.knowledge_object}</div>
+                    <div class="knowledge-item-question">${q.question}</div>
+                `;
+                knowledgeList.appendChild(item);
+            });
+            return;
+        }
+
+        // No data
+        statConcepts.textContent = 0;
+        knowledgeList.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted);padding:8px">No concepts extracted for this area yet.</div>';
     } catch (e) {
         console.error('Knowledge load error:', e);
     }
@@ -274,11 +307,28 @@ async function loadNearbyKnowledge() {
 async function fetchQuestion() {
     try {
         const res = await fetch(
-            `${API}/books/${encodeURIComponent(bookName)}/knowledge?page=${currentPage - 1}&limit=1&mode=${knowledgeMode}&provider=${encodeURIComponent(currentProvider)}`
+            `${API}/books/${encodeURIComponent(bookName)}/knowledge?page=${currentPage - 1}&limit=20&mode=${knowledgeMode}&provider=${encodeURIComponent(currentProvider)}`
         );
         if (!res.ok) return null;
         const data = await res.json();
-        return data.questions.length > 0 ? data.questions[0] : null;
+
+        // Grouped mode: pick random cluster, then random question from it
+        if (data.mode === 'grouped' && data.clusters && data.clusters.length > 0) {
+            const cluster = data.clusters[Math.floor(Math.random() * data.clusters.length)];
+            const question = cluster.questions[Math.floor(Math.random() * cluster.questions.length)];
+            return {
+                question: question,
+                knowledge_object: cluster.cluster_name,
+                reference: cluster.references ? Math.min(...cluster.references) : 0,
+            };
+        }
+
+        // Raw mode: pick from questions
+        if (data.questions && data.questions.length > 0) {
+            return data.questions[Math.floor(Math.random() * data.questions.length)];
+        }
+
+        return null;
     } catch (e) {
         return null;
     }
